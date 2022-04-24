@@ -3,19 +3,15 @@ from typing import List
 import streamlit as st
 import pandas as pd
 import numpy as np
-from yahoo_fin_api import YahooFinApi, Client, Ticker
-from yahoo_fin_api.universe import symbols as get_universe
+from yahoo_fin_api import YahooFinApi, Client, FileCache, Universe, Ticker
 
 @st.cache
-def load_data():
-	yf = YahooFinApi(
-		Client(
-			cache_response=True,
-			download_folder_path="./data"
-		)
-	)
-	universe = [ s.symbol for s in get_universe("./freetrade_universe.csv") ]
-	return yf.get_all(universe)
+def load_data()-> List[Ticker]:
+	yf = YahooFinApi(Client(FileCache("./data")))
+	symbols = Universe.get_freetrade_universe()
+	if symbols is None:
+		raise Exception("symbols not found")
+	return yf.get_all(symbols)
 
 def to_dataframe(tickers: List[Ticker])-> pd.DataFrame:
 	table = {
