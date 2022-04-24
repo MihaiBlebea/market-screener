@@ -8,6 +8,9 @@ create-env:
 install:
 	./env/bin/python3 -m pip install $(package)
 
+uninstall:
+	./env/bin/pip3 uninstall $(package)
+
 lock:
 	./env/bin/pip3 freeze > requirements.txt
 
