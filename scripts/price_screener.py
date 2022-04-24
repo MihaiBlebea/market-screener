@@ -76,6 +76,6 @@ data = [
 
 data = sorted(data, key=lambda t: t.financial_data.current_price, reverse=sort_reverse)
 
-st.title("This is a demo app")
+st.title("Market Price Screener")
 st.text(f"We found {len(data)} stocks matching the rules")
 st.table(to_dataframe(data))
