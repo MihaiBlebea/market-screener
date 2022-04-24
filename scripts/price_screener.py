@@ -8,7 +8,7 @@ from yahoo_fin_api import YahooFinApi, Client, FileCache, Universe, Ticker
 @st.cache
 def load_data()-> List[Ticker]:
 	yf = YahooFinApi(Client(FileCache("./data")))
-	symbols = Universe.get_freetrade_universe()
+	symbols = Universe.get_ftse_100_universe()
 	if symbols is None:
 		raise Exception("symbols not found")
 	return yf.get_all(symbols)
