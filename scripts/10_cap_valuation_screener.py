@@ -1,12 +1,13 @@
 from __future__ import annotations
 from typing import List
-import requests
 import streamlit as st
 from yahoo_fin_api import YahooFinApi, Client, FileCache, Universe, Ticker
 
+from lib.utils import get_symbol_img, format_amount, format_percentage
+
 BILLION = 1000000000
 
-@st.cache
+@st.experimental_memo
 def load_data(index: str)-> List[Ticker]:
 	if index == "FTSE":
 		symbols = Universe.get_ftse_100_universe()
@@ -20,67 +21,108 @@ def load_data(index: str)-> List[Ticker]:
 		raise Exception("symbols not found")
 	return yf.get_all(symbols)
 
-def get_query_param(param: str, default):
-	params = st.experimental_get_query_params()
-	if param not in params:
-		return default
-	
-	return params[param][0]
+def build_cap_valuation(tickers: List[Ticker], market_cap: int, show_top_limit: int)-> List[dict]:
+	res = []
+	for t in tickers:
+		fin_data = t.financial_data
+		summary = t.summary_detail
+
+		if fin_data is None or summary is None:
+			continue
+
+		if fin_data.free_cash_flow is None or summary.market_cap is None:
+			continue
+
+		if fin_data.free_cash_flow < 0:
+			continue
+
+		if summary.market_cap < market_cap * BILLION:
+			continue
+
+		cap_rate = fin_data.free_cash_flow / summary.market_cap * 100
+
+		if cap_rate > 10:
+			res.append({
+				"symbol": t.symbol,
+				"title": t.title,
+				"cap_rate": cap_rate,
+				"market_cap": summary.market_cap,
+				"fcf": fin_data.free_cash_flow,
+				"current_price": fin_data.current_price,
+				"profit_margin": fin_data.profit_margins * 100
+			})
+
+	return sorted(res, key=lambda r: r["cap_rate"], reverse=True)[0:show_top_limit]
+
+def display_company_title(title: str)-> str:
+	count = len(title.split(" "))
+	short = " ".join(title.split(" ")[0:3]).replace(",", "")
+
+	return title if count < 4 else short
+
+def display_stock_list(container, data: list)-> None:
+	for i, r in enumerate(data):
+		symbol = r["symbol"]
+		title = display_company_title(r["title"])
+		market_cap = r["market_cap"]
+		fcf = r["fcf"]
+		profit_margin = r["profit_margin"]
+		cap_rate = r["cap_rate"]
+
+		container.markdown(f"#### {i + 1}. {title}")
+		symbol_img = get_symbol_img(symbol)
+		if symbol_img is not None:
+			container.image(symbol_img, width=50)
+
+		container.markdown(f"**{symbol}**")
+		container.markdown(f"**Market cap:**  {format_amount(market_cap)}")
+		container.markdown(f"**Free cash flow:**  {format_amount(fcf)}")
+		container.markdown(f"**Profit margin:**  {format_percentage(profit_margin)}")
+		container.markdown(
+			f"**Cap rate:**  <span style='color:yellow;'>{format_percentage(cap_rate)}</span>",
+			unsafe_allow_html=True
+		)
+
 
 ###########
 # Sidebar #
 ###########
-universe = st.sidebar.selectbox(
-	"Use companies from index", 
-	("S&P", "FTSE", "FREETRADE"),
-	index=0,
+market_cap_limit = st.sidebar.number_input(
+	"Market cap min limit (in bil $)",
+	min_value=1,
+	value=1,
 )
 
+show_top_limit = st.sidebar.number_input(
+	"Show top limit",
+	min_value=1,
+	value=10,
+)
 
 ########
 # Main #
 ########
-tickers = load_data(universe)
 
-res = []
-for t in tickers:
-	fin_data = t.financial_data
-	summary = t.summary_detail
+st.title("10 Cap Valuation Screener")
 
-	if fin_data is None or summary is None:
-		continue
+col1, col2 = st.columns(2)
 
-	if fin_data.free_cash_flow is None or summary.market_cap is None:
-		continue
+############
+# Column 1 #
+############
+col1.header("FTSE 100")
 
-	if fin_data.free_cash_flow < 0:
-		continue
+ftse = build_cap_valuation(load_data("FTSE"), market_cap_limit, show_top_limit)
+col1.text(f"We found {len(ftse)} stocks matching the rules")
 
-	if summary.market_cap < 5 * BILLION:
-		continue
+display_stock_list(col1, ftse)
 
-	cap_rate = fin_data.free_cash_flow / summary.market_cap * 100
+############
+# Column 2 #
+############
+col2.header("S&P 500")
 
-	if cap_rate > 10:
-		res.append({
-			"symbol": t.symbol,
-			"title": t.title,
-			"cap_rate": cap_rate,
-			"market_cap": summary.market_cap,
-			"fcf": fin_data.free_cash_flow,
-			"current_price": fin_data.current_price,
-			"profit_margin": fin_data.profit_margins
-		})
+sp = build_cap_valuation(load_data("S&P"), market_cap_limit, show_top_limit)
+col2.text(f"We found {len(sp)} stocks matching the rules")
 
-	res = sorted(res, key=lambda r: r["cap_rate"], reverse=True)
-
-
-st.title("Market Price Screener")
-st.text(f"We found {len(res)} stocks matching the rules")
-
-for r in res:
-	st.text(r["symbol"])
-
-res = requests.get("https://universal.hellopublic.com/companyLogos/AAPL@3x.png")
-
-st.image(res.content)
+display_stock_list(col2, sp)

@@ -3,9 +3,10 @@ from typing import List
 import streamlit as st
 import pandas as pd
 import numpy as np
+from lib.utils import get_query_param
 from yahoo_fin_api import YahooFinApi, Client, FileCache, Universe, Ticker
 
-@st.cache
+@st.experimental_memo
 def load_data()-> List[Ticker]:
 	yf = YahooFinApi(Client(FileCache("./data")))
 	symbols = Universe.get_ftse_100_universe()
@@ -33,12 +34,6 @@ def to_dataframe(tickers: List[Ticker])-> pd.DataFrame:
 
 	return pd.DataFrame(data=table, index=np.arange(1, counter+1))
 
-def get_query_param(param: str, default):
-	params = st.experimental_get_query_params()
-	if param not in params:
-		return default
-	
-	return params[param][0]
 
 ###########
 # Sidebar #
