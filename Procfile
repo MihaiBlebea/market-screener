@@ -1,1 +1,1 @@
-web: sh setup.sh && make serve script=./scripts/compare.py
+web: sh setup.sh && make setup && make serve script=./scripts/compare.py
