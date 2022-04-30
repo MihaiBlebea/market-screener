@@ -11,6 +11,9 @@ install:
 uninstall:
 	./env/bin/pip3 uninstall $(package)
 
+update:
+	./env/bin/pip3 install -r requirements.txt --upgrade
+
 lock:
 	./env/bin/pip3 freeze > requirements.txt
 

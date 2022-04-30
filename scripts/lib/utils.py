@@ -23,3 +23,7 @@ def format_amount(value: float | int | None)-> str:
 
 def format_percentage(value: float)-> str:
 	return f"{round(value, 2)}%"
+
+def to_percentage(initial: float, final: float)-> float:
+	diff = (final - initial) / initial * 100
+	return round(diff)

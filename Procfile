@@ -1,0 +1,1 @@
+web: sh setup.sh && make serve script=./scripts/compare.py
