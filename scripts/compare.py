@@ -1,6 +1,9 @@
 from __future__ import annotations
 from typing import List
+import pandas as pd
 import streamlit as st
+import altair as alt
+from st_compare_stock import st_compare_stock
 from lib.utils import to_percentage, format_percentage
 from yahoo_fin_api import YahooFinApi, Client, Universe, Ticker
 
@@ -54,6 +57,11 @@ symbol = st.sidebar.text_input(
 	value="AAPL"
 )
 
+symbol_benchmark = st.sidebar.text_input(
+	"Benchmark symbol", 
+	value="AAPL"
+)
+
 min_rate_return = st.sidebar.number_input(
 	"Min rate of return", 
 	value=0.15
@@ -69,6 +77,8 @@ growth_rate = st.sidebar.number_input(
 # Main #
 ########
 ticker = load_data(symbol)
+
+ticker_benchmark = load_data(symbol_benchmark)
 
 st.title(ticker.title)
 st.subheader(ticker.symbol)
@@ -87,4 +97,39 @@ col2.metric(
 	"Forward EPS", 
 	ticker.key_statistics.forward_eps, 
 	format_percentage(to_percentage(ticker.key_statistics.trailing_eps, ticker.key_statistics.forward_eps)),
+)
+
+cfs = ticker.get_cashflows()
+
+data = {
+	"item": [],
+	"year": [],
+	"value": [],
+}
+for cf in cfs:
+	data["item"].append("operating activity")
+	data["value"].append(cf.total_cash_from_operating_activities)
+	data["year"].append(cf.fmt_end_date())
+
+	data["item"].append("financing activity")
+	data["value"].append(cf.total_cash_from_financing_activities)
+	data["year"].append(cf.fmt_end_date())
+
+	data["item"].append("investing activity")
+	data["value"].append(cf.total_cashflows_from_investing_activities)
+	data["year"].append(cf.fmt_end_date())
+
+
+st.subheader("Profit margin")
+st_compare_stock(
+	symbol={
+		"title": ticker.symbol,
+		"value": round(ticker.key_statistics.profit_margins, 2),
+		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+	},
+	symbol_benchmark={
+		"title": ticker_benchmark.symbol,
+		"value": round(ticker_benchmark.key_statistics.profit_margins, 2),
+		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+	}
 )
