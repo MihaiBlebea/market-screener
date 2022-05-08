@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 from st_compare_stock import st_compare_stock
+from st_group_barchart import st_group_barchart
 from lib.utils import to_percentage, format_percentage
 from yahoo_fin_api import YahooFinApi, Client, Universe, Ticker
 
@@ -78,8 +79,6 @@ growth_rate = st.sidebar.number_input(
 ########
 ticker = load_data(symbol)
 
-ticker_benchmark = load_data(symbol_benchmark)
-
 st.title(ticker.title)
 st.subheader(ticker.symbol)
 
@@ -121,15 +120,46 @@ for cf in cfs:
 
 
 st.subheader("Profit margin")
-st_compare_stock(
-	symbol={
-		"title": ticker.symbol,
-		"value": round(ticker.key_statistics.profit_margins, 2),
-		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+# st_compare_stock(
+# 	symbol={
+# 		"title": ticker.symbol,
+# 		"value": round(ticker.key_statistics.profit_margins, 2),
+# 		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+# 	},
+# 	symbol_benchmark={
+# 		"title": ticker_benchmark.symbol,
+# 		"value": round(ticker_benchmark.key_statistics.profit_margins, 2),
+# 		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+# 	}
+# )
+
+groups = [cf.fmt_end_date().split("-")[0] for cf in cfs]
+
+cf_operating_activities = []
+cf_financing_activities = []
+cf_investing_activities = []
+for cf in cfs:
+	cf_operating_activities.append(cf.total_cash_from_operating_activities)
+	cf_financing_activities.append(cf.total_cash_from_financing_activities)
+	cf_investing_activities.append(cf.total_cashflows_from_investing_activities)
+
+st_group_barchart(groups=groups, datasets=[
+	{
+		"label": "Operating Activities",
+		"background_color": "red",
+		"border_color": "pink",
+		"data": cf_operating_activities
 	},
-	symbol_benchmark={
-		"title": ticker_benchmark.symbol,
-		"value": round(ticker_benchmark.key_statistics.profit_margins, 2),
-		"description": f"{ticker.symbol} has a higher profit margin which means that it can generate more cashflow"
+	{
+		"label": "Financing Activities",
+		"background_color": "lightblue",
+		"border_color": "blue",
+		"data": cf_financing_activities
+	},
+	{
+		"label": "Investing Activities",
+		"background_color": "lightgreen",
+		"border_color": "green",
+		"data": cf_investing_activities
 	}
-)
+])
